@@ -1,0 +1,136 @@
+# 이슈 생성 시, API 명세를 빌드한 뒤에 명세 보관소 레포지토리로 업로드하는 워크플로우
+name: Upload API Specification
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-and-upload-api-specification:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.issue.title == '🔀 API 명세 업로드' }}
+    steps:
+      - name: 이슈 본문으로부터 빌드 대상 브랜치 파싱
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueBody = context.payload.issue.body;
+
+            // "- 빌드 대상 브랜치: {브랜치명}" 패턴 파싱
+            const branchMatch = issueBody.match(/^-\s*빌드\s*대상\s*브랜치\s*:\s*(.+)$/m);
+
+            if (!branchMatch) {
+              core.setFailed('이슈 본문에서 빌드 대상 브랜치를 찾을 수 없습니다.');
+              return;
+            }
+
+            const targetBranch = branchMatch[1].trim();
+
+            // 브랜치명 유효성 검사
+            if (!targetBranch) {
+              core.setFailed('빌드 대상 브랜치가 비어있습니다.');
+              return;
+            }
+
+            core.info(`파싱된 브랜치: ${targetBranch}`);
+            core.setOutput('branch', targetBranch);
+
+            return targetBranch;
+
+      - name: 빌드 대상 브랜치 체크아웃
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.parse.outputs.branch }}
+
+      - name: JDK 21 셋업
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: gradlew를 실행 가능하도록 설정
+        run: chmod +x ./gradlew
+
+      - name: OpenAPI 명세 생성
+        run: |
+          ./gradlew generateOpenApiDocs
+          echo "OpenAPI 명세 생성 완료"
+
+      - name: 생성된 OpenAPI YAML 확인 및 복사
+        run: |
+          ls -lh build/openapi/
+          cp build/openapi/openapi.yaml ./openapi.yaml
+          echo "생성된 OpenAPI 명세:"
+          head -20 openapi.yaml
+
+      - name: 파일명 생성 (YYYYMMDD-uuid.yml)
+        id: filename
+        run: |
+          DATE=$(date +'%Y%m%d')
+          UUID=$(uuidgen)
+          FILENAME="${DATE}-${UUID}.yml"
+          echo "filename=${FILENAME}" >> $GITHUB_OUTPUT
+          echo "생성된 파일명: ${FILENAME}"
+
+      - name: Specification 레포지토리 체크아웃
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ github.repository_owner }}/specification
+          token: ${{ secrets.SPECIFICATION_REPO_TOKEN }}
+          path: specification-repo
+          ref: main
+
+      - name: Dev 디렉토리에 명세 파일 업로드 및 latest.yml 생성
+        run: |
+          cd specification-repo
+
+          # dev 디렉토리가 없으면 생성
+          mkdir -p dev
+
+          # 생성된 명세를 dev 디렉토리에 복사 (타임스탬프 버전)
+          cp ../openapi.yaml dev/${{ steps.filename.outputs.filename }}
+
+          # latest.yml 파일 생성 (동일한 내용)
+          cp ../openapi.yaml dev/latest.yml
+
+          # Git 설정
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 변경사항 커밋 및 푸시
+          git add dev/${{ steps.filename.outputs.filename }} dev/latest.yml
+          git commit -m "chore: Upload API specification ${{ steps.filename.outputs.filename }}"
+          git push origin main
+
+      - name: 이슈 코멘트 등록
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const filename = '${{ steps.filename.outputs.filename }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `✅ API 명세 업로드가 완료되어 이슈를 닫습니다.\n\n**업로드된 파일:**\n- \`dev/${filename}\` (타임스탬프 버전)\n- \`dev/latest.yml\` (최신 버전)\n\n**레포지토리:** \`${context.repo.owner}/specification\``
+            });
+
+      - name: 이슈 닫기
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              state: 'closed'
+            });
