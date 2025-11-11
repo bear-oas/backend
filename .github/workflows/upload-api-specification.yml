@@ -71,12 +71,12 @@ jobs:
           echo "생성된 OpenAPI 명세:"
           head -20 openapi.yaml
 
-      - name: 파일명 생성 (YYYYMMDD-uuid.yml)
+      - name: 파일명 생성 (YYYYMMDD-uuid.json)
         id: filename
         run: |
           DATE=$(date +'%Y%m%d')
           UUID=$(uuidgen)
-          FILENAME="${DATE}-${UUID}.yml"
+          FILENAME="${DATE}-${UUID}.json"
           echo "filename=${FILENAME}" >> $GITHUB_OUTPUT
           echo "생성된 파일명: ${FILENAME}"
 
@@ -88,7 +88,7 @@ jobs:
           path: specification-repo
           ref: main
 
-      - name: Dev 디렉토리에 명세 파일 업로드 및 latest.yml 생성
+      - name: Dev 디렉토리에 명세 파일 업로드 및 latest.json 생성
         run: |
           cd specification-repo
 
@@ -98,15 +98,15 @@ jobs:
           # 생성된 명세를 dev 디렉토리에 복사 (타임스탬프 버전)
           cp ../openapi.yaml dev/${{ steps.filename.outputs.filename }}
 
-          # latest.yml 파일 생성 (동일한 내용)
-          cp ../openapi.yaml dev/latest.yml
+          # latest.json 파일 생성 (동일한 내용)
+          cp ../openapi.yaml dev/latest.json
 
           # Git 설정
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # 변경사항 커밋 및 푸시
-          git add dev/${{ steps.filename.outputs.filename }} dev/latest.yml
+          git add dev/${{ steps.filename.outputs.filename }} dev/latest.json
           git commit -m "chore: Upload API specification ${{ steps.filename.outputs.filename }}"
           git push origin main
 
@@ -120,7 +120,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: `✅ API 명세 업로드가 완료되어 이슈를 닫습니다.\n\n**업로드된 파일:**\n- \`dev/${filename}\` (타임스탬프 버전)\n- \`dev/latest.yml\` (최신 버전)\n\n**레포지토리:** \`${context.repo.owner}/specification\``
+              body: `✅ API 명세 업로드가 완료되어 이슈를 닫습니다.\n\n**업로드된 파일:**\n- \`dev/${filename}\` (타임스탬프 버전)\n- \`dev/latest.json\` (최신 버전)\n\n**레포지토리:** \`${context.repo.owner}/specification\``
             });
 
       - name: 이슈 닫기
