@@ -50,6 +50,15 @@ java -jar build/libs/third-backend-0.0.1-SNAPSHOT.jar
 - `PUT /api/users/{id}` - 사용자 정보 수정
 - `DELETE /api/users/{id}` - 사용자 삭제
 
+### Pet API
+
+- `GET /api/pets` - 모든 애완동물 목록 조회 (상태별 필터링 지원)
+- `GET /api/pets/{id}` - 특정 애완동물 조회
+- `POST /api/pets` - 새 애완동물 등록
+- `PUT /api/pets/{id}` - 애완동물 정보 수정
+- `PATCH /api/pets/{id}/status` - 애완동물 상태 업데이트
+- `DELETE /api/pets/{id}` - 애완동물 삭제
+
 ## 사용 예제
 
 ### 모든 사용자 조회
@@ -92,6 +101,56 @@ curl -X PUT http://localhost:8080/api/users/1 \
 
 ```bash
 curl -X DELETE http://localhost:8080/api/users/1
+```
+
+### 모든 애완동물 조회
+
+```bash
+curl http://localhost:8080/api/pets
+```
+
+### 상태별 애완동물 조회
+
+```bash
+curl "http://localhost:8080/api/pets?status=available"
+```
+
+### 새 애완동물 등록
+
+```bash
+curl -X POST http://localhost:8080/api/pets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "뽀삐",
+    "species": "강아지",
+    "age": 2,
+    "status": "available"
+  }'
+```
+
+### 애완동물 정보 수정
+
+```bash
+curl -X PUT http://localhost:8080/api/pets/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "멍멍이",
+    "species": "강아지",
+    "age": 4,
+    "status": "sold"
+  }'
+```
+
+### 애완동물 상태만 업데이트
+
+```bash
+curl -X PATCH "http://localhost:8080/api/pets/1/status?status=sold"
+```
+
+### 애완동물 삭제
+
+```bash
+curl -X DELETE http://localhost:8080/api/pets/1
 ```
 
 ## 기술 스택
