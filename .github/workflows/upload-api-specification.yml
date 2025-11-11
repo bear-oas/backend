@@ -55,9 +55,16 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: gradle
+          cache-dependency-path: |
+            **/gradle/wrapper/gradle-wrapper.properties
+            **/gradle.properties
+            **/build.gradle*
 
       - name: gradlew를 실행 가능하도록 설정
         run: chmod +x ./gradlew
+
+      - name: 빌드 결과물 삭제
+        run: ./gradlew clean
 
       - name: OpenAPI 명세 생성
         run: |
