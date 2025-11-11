@@ -64,12 +64,12 @@ jobs:
           ./gradlew generateOpenApiDocs
           echo "OpenAPI 명세 생성 완료"
 
-      - name: 생성된 OpenAPI YAML 확인 및 복사
+      - name: 생성된 OpenAPI JSON 확인 및 복사
         run: |
           ls -lh build/openapi/
-          cp build/openapi/openapi.yaml ./openapi.yaml
+          cp build/openapi/openapi.json ./openapi.json
           echo "생성된 OpenAPI 명세:"
-          head -20 openapi.yaml
+          head -20 openapi.json
 
       - name: 파일명 생성 (YYYYMMDD-uuid.json)
         id: filename
@@ -96,10 +96,10 @@ jobs:
           mkdir -p dev
 
           # 생성된 명세를 dev 디렉토리에 복사 (타임스탬프 버전)
-          cp ../openapi.yaml dev/${{ steps.filename.outputs.filename }}
+          cp ../openapi.json dev/${{ steps.filename.outputs.filename }}
 
           # latest.json 파일 생성 (동일한 내용)
-          cp ../openapi.yaml dev/latest.json
+          cp ../openapi.json dev/latest.json
 
           # Git 설정
           git config user.name "github-actions[bot]"
