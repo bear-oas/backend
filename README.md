@@ -4,7 +4,7 @@ Swagger/OpenAPI가 통합된 Spring Boot REST API 애플리케이션입니다.
 
 ## 요구사항
 
-- Java 17 이상
+- Java 21 이상
 - Gradle 7.x 이상 (또는 포함된 Gradle Wrapper 사용)
 
 ## 실행 방법
@@ -96,6 +96,6 @@ curl -X DELETE http://localhost:8080/api/users/1
 
 ## 기술 스택
 
-- Spring Boot 3.2.0
-- SpringDoc OpenAPI 2.3.0
-- Java 17
+- Spring Boot 3.5.7
+- SpringDoc OpenAPI 2.8.13
+- Java 21
