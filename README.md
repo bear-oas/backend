@@ -48,7 +48,6 @@ sequenceDiagram
     participant BE as Backend Repository
     participant BE_GHA as BE GitHub Actions
     participant Spec as Specification Repository
-    participant FE_GHA as FE GitHub Actions
     participant FE as Frontend Repository
     actor FE_Dev as 프론트엔드 개발자
 
@@ -87,19 +86,12 @@ sequenceDiagram
     end
 
     rect rgb(255, 240, 245)
-        Note over FE_GHA,FE: 4️⃣ 타입 및 API 함수 자동 생성
+        Note over FE_Dev,FE: 4️⃣ 타입 및 API 함수 자동 생성
 
-        alt GitHub Actions 사용
-            FE_GHA->>FE_GHA: 코드 생성 도구 실행<br/>(openapi-generator/orval/swagger-typescript-api)
-            FE_GHA->>FE_GHA: TypeScript 타입 생성
-            FE_GHA->>FE_GHA: API 호출 함수 생성
-            FE_GHA->>FE: 생성된 코드 커밋
-            deactivate FE_GHA
-        else 로컬 개발 환경
-            FE_Dev->>FE: npm run generate-api
-            FE->>FE: TypeScript 타입 생성
-            FE->>FE: API 호출 함수 생성
-        end
+        FE_Dev->>FE: npm run generate-api
+        FE->>FE: 코드 생성 도구 실행<br/>(openapi-generator/orval/swagger-typescript-api)
+        FE->>FE: TypeScript 타입 생성
+        FE->>FE: API 호출 함수 생성
 
         Note over FE: src/generated/<br/>├─ api/<br/>│  ├─ petApi.ts<br/>│  └─ userApi.ts<br/>└─ models/<br/>   ├─ Pet.ts<br/>   └─ User.ts
     end
@@ -119,7 +111,7 @@ sequenceDiagram
 
 2. **명세 업로드**: 생성된 명세는 Specification Repository에 환경별(dev/prod)로 저장됩니다. 최신 버전(`latest.json`)과 타임스탬프 버전이 모두 유지됩니다.
 
-3. **프론트엔드에서 명세 다운로드**: 프론트엔드 팀은 GitHub Actions 또는 수동으로 최신 또는 특정 버전의 명세를 다운로드합니다.
+3. **프론트엔드에서 명세 다운로드**: 프론트엔드 개발자가 Specification Repository에서 최신 또는 특정 버전의 명세를 다운로드합니다.
 
 4. **타입 및 API 함수 자동 생성**: OpenAPI 명세로부터 TypeScript 타입 정의와 API 호출 함수를 자동 생성합니다.
 
