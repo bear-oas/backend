@@ -59,12 +59,7 @@ sequenceDiagram
         Developer->>BE: Git Push (or PR merge)
 
         activate BE_GHA
-        BE->>BE_GHA: Workflow 트리거 (push/issue)
-        BE_GHA->>BE_GHA: Checkout 코드
-        BE_GHA->>BE_GHA: Java & Gradle 설정
-        BE_GHA->>BE_GHA: ./gradlew clean build
-        BE_GHA->>BE_GHA: ./gradlew bootRun (백그라운드)
-        BE_GHA->>BE_GHA: 애플리케이션 준비 대기
+        BE->>BE_GHA: Workflow 트리거
         BE_GHA->>BE_GHA: ./gradlew generateOpenApiDocs
         BE_GHA->>BE_GHA: openapi.json 생성 확인
         Note over BE_GHA: build/openapi/openapi.json
@@ -86,17 +81,9 @@ sequenceDiagram
     rect rgb(255, 250, 240)
         Note over Spec,FE_Dev: 3️⃣ 프론트엔드에서 명세 다운로드
         FE_Dev->>FE: 명세 업데이트 필요 인지
-
-        alt 자동 다운로드 (GitHub Actions)
-            FE->>FE_GHA: Workflow 수동/자동 트리거
-            activate FE_GHA
-            FE_GHA->>Spec: latest.json 다운로드<br/>(or 특정 버전 선택)
-            Spec-->>FE_GHA: openapi.json 반환
-        else 수동 다운로드
-            FE_Dev->>Spec: 특정 버전 openapi.json 다운로드
-            Spec-->>FE_Dev: openapi.json 반환
-            FE_Dev->>FE: 명세 파일 저장
-        end
+        FE_Dev->>Spec: 특정 버전 openapi.json 다운로드
+        Spec-->>FE_Dev: openapi.json 반환
+        FE_Dev->>FE: 명세 파일 저장
     end
 
     rect rgb(255, 240, 245)
