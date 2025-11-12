@@ -1,53 +1,47 @@
-# 이슈 생성 시, API 명세를 빌드한 뒤에 명세 보관소 레포지토리로 업로드하는 워크플로우
+# dev/stg/prod 브랜치에 PR이 병합되면, API 명세를 빌드한 뒤에 명세 보관소 레포지토리로 업로드하는 워크플로우
 name: Upload API Specification
 
 on:
-  issues:
-    types: [opened]
+  pull_request:
+    types: [closed]
+    branches:
+      - dev
+      - stg
+      - prod
 
 permissions:
-  issues: write
   contents: write
   pull-requests: write
+
+env:
+  TARGET_BRANCHES: '["dev","stg","prod"]'
 
 jobs:
   build-and-upload-api-specification:
     runs-on: ubuntu-latest
-    if: ${{ github.event.issue.title == '🔀 API 명세 업로드' }}
+    if: github.event.pull_request.merged == true
     steps:
-      - name: 이슈 본문으로부터 빌드 대상 브랜치 파싱
-        id: parse
+      - name: 브랜치 이름 확인 및 유효성 검사
+        id: branch
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issueBody = context.payload.issue.body;
+            const targetBranches = JSON.parse(process.env.TARGET_BRANCHES);
+            const baseBranch = context.payload.pull_request.base.ref;
 
-            // "- 빌드 대상 브랜치: {브랜치명}" 패턴 파싱
-            const branchMatch = issueBody.match(/^-\s*빌드\s*대상\s*브랜치\s*:\s*(.+)$/m);
-
-            if (!branchMatch) {
-              core.setFailed('이슈 본문에서 빌드 대상 브랜치를 찾을 수 없습니다.');
+            if (!targetBranches.includes(baseBranch)) {
+              core.setFailed(`브랜치 ${baseBranch}는 대상 브랜치가 아닙니다. 대상: ${targetBranches.join(', ')}`);
               return;
             }
 
-            const targetBranch = branchMatch[1].trim();
+            core.setOutput('branch', baseBranch);
+            core.info(`대상 브랜치: ${baseBranch}`);
 
-            // 브랜치명 유효성 검사
-            if (!targetBranch) {
-              core.setFailed('빌드 대상 브랜치가 비어있습니다.');
-              return;
-            }
-
-            core.info(`파싱된 브랜치: ${targetBranch}`);
-            core.setOutput('branch', targetBranch);
-
-            return targetBranch;
-
-      - name: 빌드 대상 브랜치 체크아웃
+      - name: 대상 브랜치 체크아웃
         uses: actions/checkout@v5
         with:
-          ref: ${{ steps.parse.outputs.branch }}
+          ref: ${{ steps.branch.outputs.branch }}
 
       - name: JDK 21 셋업
         uses: actions/setup-java@v4
@@ -95,49 +89,26 @@ jobs:
           path: specification-repo
           ref: main
 
-      - name: Dev 디렉토리에 명세 파일 업로드 및 latest.json 생성
+      - name: 브랜치별 디렉토리에 명세 파일 업로드 및 latest.json 생성
         run: |
           cd specification-repo
 
-          # dev 디렉토리가 없으면 생성
-          mkdir -p dev
+          BRANCH_NAME="${{ steps.branch.outputs.branch }}"
 
-          # 생성된 명세를 dev 디렉토리에 복사 (타임스탬프 버전)
-          cp ../openapi.json dev/${{ steps.filename.outputs.filename }}
+          # 브랜치별 디렉토리가 없으면 생성
+          mkdir -p ${BRANCH_NAME}
+
+          # 생성된 명세를 브랜치별 디렉토리에 복사 (타임스탬프 버전)
+          cp ../openapi.json ${BRANCH_NAME}/${{ steps.filename.outputs.filename }}
 
           # latest.json 파일 생성 (동일한 내용)
-          cp ../openapi.json dev/latest.json
+          cp ../openapi.json ${BRANCH_NAME}/latest.json
 
           # Git 설정
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # 변경사항 커밋 및 푸시
-          git add dev/${{ steps.filename.outputs.filename }} dev/latest.json
-          git commit -m "chore: Upload API specification ${{ steps.filename.outputs.filename }}"
+          git add ${BRANCH_NAME}/${{ steps.filename.outputs.filename }} ${BRANCH_NAME}/latest.json
+          git commit -m "chore: Upload API specification ${{ steps.filename.outputs.filename }} to ${BRANCH_NAME}"
           git push origin main
-
-      - name: 이슈 코멘트 등록
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const filename = '${{ steps.filename.outputs.filename }}';
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              body: `✅ API 명세 업로드가 완료되어 이슈를 닫습니다.\n\n**업로드된 파일:**\n- \`dev/${filename}\` (타임스탬프 버전)\n- \`dev/latest.json\` (최신 버전)\n\n**레포지토리:** \`${context.repo.owner}/specification\``
-            });
-
-      - name: 이슈 닫기
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              state: 'closed'
-            });
