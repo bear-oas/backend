@@ -1,6 +1,6 @@
 # Third Backend - Spring Boot Application
 
-Swagger/OpenAPI가 통합된 Spring Boot REST API 애플리케이션입니다.
+Swagger/OpenAPI가 통합된 Spring Boot REST API 애플리케이션입니다. 
 
 ## 요구사항
 
